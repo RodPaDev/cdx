@@ -1,53 +1,67 @@
-# CDX (Change Directory Xplorer) — Filesystem Explorer Concept
+# CDX (Change Directory Xplorer)
 
-CDX is a terminal-based file explorer inspired by the interface seen in the series *Silo*.  
-The TUI is structured into three distinct sections:
+A modern, terminal-based file explorer with vim-like navigation and visual grid layout. Inspired by "Silo" the AppleTv Series
 
-## 1. Top Bar
+![CDX Inspiration](inspiration.png)
 
-Displays:
-- Breadcrumb-style navigation (e.g., `/home/user/projects`)
-- Current sorting mode (e.g., `Sort: Date ↓`)
+## Features
 
+- Terminal-based UI with clean, visual grid layout
+- Vim-style navigation (h/j/k/l keys)
+- File metadata display (size, modification date)
+- Path breadcrumb navigation
+- Open files with system default applications
+- Cross-platform support (macOS, Linux, Windows)
+
+## Installation
+
+### Automatic Installation
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rodpadev/cdx/main/install.sh | bash
 ```
 
-┌─────────────────────────────────────────────────────────────┐
-│ /home/user/projects                 Sort: Date Modified ↓   │
-└─────────────────────────────────────────────────────────────┘
+The installer will:
+- Create `~/.cdx` directory
+- Download the source code
+- Build the application
+- Add the binary to your PATH
 
+### Manual Installation
+
+1. Ensure Go is installed on your system
+2. Clone the repository:
+   ```bash
+   git clone https://github.com/rodpadev/cdx.git
+   cd cdx
+   ```
+3. Build the application:
+   ```bash
+   go build -o cdx
+   ```
+4. Move the binary to a location in your PATH:
+   ```bash
+   mv cdx /usr/local/bin/
+   ```
+
+## Usage
+
+Start CDX in the current directory:
+```bash
+cdx
 ```
 
-## 2. Main Content Area (Gallery View)
+### Navigation
 
-Files and directories are displayed in framed blocks, each showing:
-- An icon (📁 folder, 📄 file)
-- Truncated name if too long: `start..end.ext`
-- Creation date and size
+- `h` - Move left
+- `j` - Move down
+- `k` - Move up
+- `l` - Move right
+- `Enter` - Open file/directory
+- `Backspace` - Go up one directory
+- `q` - Quit application
 
-**Example display:**
+## Requirements
 
-```
-
-┌────────────────────────────────┐
-│    my_really_cool_script.sh    │
-│     2025-11-28 22:45   1.2MB   │
-└────────────────────────────────┘
-
-┌────────────────────────────────┐
-│           start here           │
-│     2023-01-03 09:10   320KB   │
-└────────────────────────────────┘
-
-```
-
-## 3. Bottom Bar
-
-Acts as a shell passthrough for basic commands.
-
-```
-
-> mkdir new\_folder
-> cd projects (this will also update the current visual dir on cdx)
-> cdx sort name
-
-```
+- Go 1.16 or higher
+- Terminal with support for TUI applications
