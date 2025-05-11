@@ -25,14 +25,22 @@ I may have been one of the few people that really vibes with the Silo computers.
 
 ## Installation
 
+> **Note:** CDX has been primarily tested on macOS but should work on Linux and Windows. The Windows installation script has been AI-generated and has not been tested.
+
 ### Automatic Installation
 
+#### macOS/Linux:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/rodpadev/cdx/main/install.sh | bash
 ```
 
+#### Windows:
+```powershell
+iwr -useb https://raw.githubusercontent.com/rodpadev/cdx/main/install.ps1 | iex
+```
+
 The installer will:
-- Create `~/.cdx` directory
+- Create `~/.cdx` directory (or `%USERPROFILE%\.cdx` on Windows)
 - Download the source code
 - Build the application
 - Add the binary to your PATH
