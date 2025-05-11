@@ -2,7 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
+	"os/user"
+	"runtime"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -10,16 +13,22 @@ import (
 )
 
 const (
-	OUTSIDE_PADDING                = 2
 	FILE_OBJECT_HEIGHT             = 5
 	FILE_OBJECT_WIDTH              = 25
 	FILE_OBJECT_HORIZONTAL_PADDING = 2
 	FILE_OBJECT_VERTICAL_PADDING   = 2
+	TOP_BAR_HEIGHT                 = 3
+	BOTTOM_BAR_HEIGHT              = 3
+	BORDER_SIZE                    = 1
 )
 
 var (
 	borderColor   = lipgloss.Color("#2abbae")
 	selectedColor = lipgloss.Color("#dadb83")
+
+	styleScreen = lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder()).
+			BorderForeground(borderColor)
 
 	styleTile = lipgloss.NewStyle().
 			Width(FILE_OBJECT_WIDTH).
@@ -41,10 +50,6 @@ var (
 			BorderRight(false).
 			BorderBottom(false).
 			BorderForeground(borderColor)
-
-	styleScreen = lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder()).
-			BorderForeground(borderColor)
 )
 
 type state struct {
@@ -60,10 +65,10 @@ type model struct {
 	rows, cols    int
 }
 
-func initModel() model {
+func initModel(path string) model {
 	return model{
 		state: state{
-			currentPath:   "/Users/patrickrodrigues",
+			currentPath:   path,
 			coordinateIdx: [2]int{0, 0},
 		},
 	}
@@ -79,10 +84,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 
-		usableH := m.height - OUTSIDE_PADDING
-		usableW := m.width - OUTSIDE_PADDING
-		m.rows = usableH / (FILE_OBJECT_HEIGHT + FILE_OBJECT_VERTICAL_PADDING)
-		m.cols = usableW / (FILE_OBJECT_WIDTH + FILE_OBJECT_HORIZONTAL_PADDING)
+		contentWidth := m.width - (2 * BORDER_SIZE)
+		contentHeight := m.height - (2 * BORDER_SIZE)
+
+		availableHeight := contentHeight - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT
+		m.rows = availableHeight / (FILE_OBJECT_HEIGHT + FILE_OBJECT_VERTICAL_PADDING)
+		m.cols = contentWidth / (FILE_OBJECT_WIDTH + FILE_OBJECT_HORIZONTAL_PADDING)
+
+		if m.rows < 1 {
+			m.rows = 1
+		}
+		if m.cols < 1 {
+			m.cols = 1
+		}
 
 		m.objects = listObjects(m.state.currentPath)
 
@@ -108,9 +122,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	idx := (m.state.viewportRowOffset+m.state.coordinateIdx[0])*m.cols + m.state.coordinateIdx[1]
-	if idx >= len(m.objects) {
+	if idx >= len(m.objects) && len(m.objects) > 0 {
 		last := len(m.objects) - 1
-		m.state.coordinateIdx[0] = last/m.cols - m.state.viewportRowOffset
+		m.state.coordinateIdx[0] = (last / m.cols) - m.state.viewportRowOffset
+		if m.state.coordinateIdx[0] < 0 {
+			m.state.coordinateIdx[0] = 0
+			m.state.viewportRowOffset = last / m.cols
+		}
 		m.state.coordinateIdx[1] = last % m.cols
 	}
 
@@ -118,17 +136,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	usableH := m.height - OUTSIDE_PADDING
-	usableW := m.width - OUTSIDE_PADDING
+	contentWidth := m.width - (2 * BORDER_SIZE)
+	contentHeight := m.height - (2 * BORDER_SIZE)
 
-	var rows []string
-	for rowIdx := range m.rows {
+	explorerHeight := contentHeight - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT + 2
+
+	topBar := styleTopBar.
+		Width(contentWidth).
+		Render(m.state.currentPathBreadcrumb(contentWidth))
+
+	var fileExplorerRows []string
+
+	// Create grid display for files and directories
+	for rowIdx := 0; rowIdx < m.rows; rowIdx++ {
 		var cols []string
-		for colIdx := range m.cols {
+		for colIdx := 0; colIdx < m.cols; colIdx++ {
 			objectIdx := (m.state.viewportRowOffset+rowIdx)*m.cols + colIdx
 
 			if objectIdx >= len(m.objects) {
-				cols = append(cols, "")
+				cols = append(cols, strings.Repeat(" ", FILE_OBJECT_WIDTH))
 				continue
 			}
 
@@ -145,40 +171,105 @@ func (m model) View() string {
 				renderFileTile(m.objects[objectIdx], FILE_OBJECT_WIDTH-2),
 			))
 		}
-		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Top, cols...))
+		fileExplorerRows = append(fileExplorerRows, lipgloss.JoinHorizontal(lipgloss.Top, cols...))
 	}
 
-	gridW := m.cols * (FILE_OBJECT_WIDTH + FILE_OBJECT_HORIZONTAL_PADDING)
-	grid := lipgloss.NewStyle().
-		MarginLeft((usableW - gridW) / 2).
-		Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
+	// Center the grid horizontally
+	gridWidth := m.cols * (FILE_OBJECT_WIDTH + FILE_OBJECT_HORIZONTAL_PADDING)
+	marginLeft := (contentWidth - gridWidth) / 2
+	if marginLeft < 0 {
+		marginLeft = 0
+	}
 
-	topBar := styleTopBar.
-		Width(usableW).
-		Render(m.state.currentPathBreadcrumb(usableW))
+	fileExplorer := lipgloss.NewStyle().
+		MarginLeft(marginLeft).
+		Height(explorerHeight).
+		Render(lipgloss.JoinVertical(lipgloss.Left, fileExplorerRows...))
 
 	navItems := []string{
-		" ",
 		"h/j/k/l - move",
 		"⏎ - open/navigate",
 		"⌫ - up",
 		"q - quit",
-		" ",
 	}
-	navText := spaceBetween(navItems, usableW-2)
+
+	totalItemLength := 0
+	for _, item := range navItems {
+		totalItemLength += len(item)
+	}
+	spacesNeeded := contentWidth - totalItemLength - 2 // Account for padding
+	spacesPerGap := 1
+	if len(navItems) > 1 {
+		spacesPerGap = spacesNeeded / (len(navItems) - 1)
+		if spacesPerGap < 1 {
+			spacesPerGap = 1
+		}
+	}
+
+	navText := navItems[0]
+	for i := 1; i < len(navItems); i++ {
+		navText += strings.Repeat(" ", spacesPerGap) + navItems[i]
+	}
 
 	bottomBar := styleBottomBar.
-		Width(usableW).
+		Width(contentWidth).
 		Render(navText)
 
+	mainContent := lipgloss.JoinVertical(
+		lipgloss.Left,
+		topBar,
+		fileExplorer,
+		bottomBar,
+	)
+
 	return styleScreen.
-		Width(usableW).
-		Height(usableH).
-		Render(lipgloss.JoinVertical(lipgloss.Top, topBar, grid, bottomBar))
+		Width(contentWidth).
+		Height(contentHeight).
+		Render(mainContent)
+}
+
+func getHomeDir() string {
+	// First try HOME (Unix) or USERPROFILE (Windows)
+	if runtime.GOOS == "windows" {
+		if home := os.Getenv("USERPROFILE"); home != "" {
+			return home
+		}
+	} else {
+		if home := os.Getenv("HOME"); home != "" {
+			return home
+		}
+	}
+
+	usr, err := user.Current()
+	if err == nil && usr.HomeDir != "" {
+		return usr.HomeDir
+	}
+
+	return "/"
 }
 
 func main() {
-	p := tea.NewProgram(initModel(), tea.WithAltScreen())
+	var argPath string
+	if len(os.Args) > 1 {
+		argPath = os.Args[1]
+	} else {
+		var err error
+		argPath, err = os.Getwd()
+		if err != nil {
+			argPath = getHomeDir()
+		}
+	}
+	fileInfo, err := os.Lstat(argPath)
+	if err != nil {
+		log.Fatalf("Could not get lstat of %s", argPath)
+	}
+
+	if !fileInfo.IsDir() {
+		segments := strings.Split(argPath, "/")
+		argPath = strings.Join(segments[0:len(segments)-1], "/")
+	}
+
+	p := tea.NewProgram(initModel(argPath), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Error: %v", err)
 		os.Exit(1)
