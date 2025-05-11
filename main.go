@@ -39,6 +39,59 @@ type state struct {
 	viewportRowOffset int
 }
 
+func (s state) currentPathBreadcrumb(maxWidth int) string {
+	if s.currentPath == "/" {
+		return " /"
+	}
+
+	parts := strings.Split(strings.TrimPrefix(s.currentPath, "/"), "/")
+	segments := make([]string, len(parts))
+	for i, part := range parts {
+		segments[i] = " / " + part
+	}
+
+	full := strings.Join(segments, "")
+	if lipgloss.Width(full) <= maxWidth {
+		return full
+	}
+
+	ellipsis := " / ..."
+	avail := maxWidth - lipgloss.Width(ellipsis)
+	if avail <= 0 {
+		return ellipsis
+	}
+
+	left := []string{}
+	right := []string{}
+
+	leftWidth := 0
+	rightWidth := 0
+	i := 0
+	j := len(segments) - 1
+
+	for i <= j {
+		if leftWidth <= rightWidth {
+			segW := lipgloss.Width(segments[i])
+			if leftWidth+segW+rightWidth > avail {
+				break
+			}
+			left = append(left, segments[i])
+			leftWidth += segW
+			i += 1
+		} else {
+			segW := lipgloss.Width(segments[j])
+			if leftWidth+rightWidth+segW > avail {
+				break
+			}
+			right = append([]string{segments[j]}, right...)
+			rightWidth += segW
+			j -= 1
+		}
+	}
+
+	return strings.Join(left, "") + ellipsis + strings.Join(right, "")
+}
+
 type model struct {
 	width, height int
 	state         state
@@ -47,6 +100,9 @@ type model struct {
 }
 
 func (m *model) openCurrentPath() {
+	if m.state.currentPath == "" {
+		m.state.currentPath = "/"
+	}
 	m.state.coordinateIdx = [2]int{0, 0}
 	m.state.viewportRowOffset = 0
 	m.objects = ListObjects(m.state.currentPath)
@@ -154,7 +210,7 @@ func (m model) View() string {
 	return styleScreen.
 		Width(usableW).
 		Height(usableH).
-		Render(grid)
+		Render(lipgloss.JoinVertical(lipgloss.Top, m.state.currentPathBreadcrumb(m.width), grid))
 }
 
 func main() {
