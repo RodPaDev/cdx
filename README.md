@@ -2,6 +2,16 @@
 
 A modern, terminal-based file explorer with vim-like navigation and visual grid layout. Inspired by "Silo" the AppleTv Series
 
+
+
+https://github.com/user-attachments/assets/e41af138-e348-41ec-b672-dbec5b3de594
+
+
+
+## Inspiration
+
+I may have been one of the few people that really vibes with the Silo computers. It truly is retro-futuristic looking!
+
 ![CDX Inspiration](inspiration.png)
 
 ## Features
