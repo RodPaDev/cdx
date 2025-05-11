@@ -2,6 +2,8 @@
 
 A modern, terminal-based file explorer with vim-like navigation and visual grid layout. Inspired by "Silo" the AppleTv Series
 
+> **Note:** This codebase is heavily commented for documentation purposes and future reference. The comments were AI-generated to help explain the spatial programming concepts and navigation logic used throughout the application.
+
 
 
 https://github.com/user-attachments/assets/e41af138-e348-41ec-b672-dbec5b3de594

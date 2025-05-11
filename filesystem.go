@@ -11,14 +11,16 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// FileSystemObject holds metadata for a file or directory
 type FileSystemObject struct {
-	Name    string
-	Path    string
-	IsDir   bool
-	Size    int64
-	ModTime time.Time
+	Name    string    // Entry name
+	Path    string    // Absolute path
+	IsDir   bool      // True if directory
+	Size    int64     // Size in bytes (files only)
+	ModTime time.Time // Last modified time
 }
 
+// listObjects reads a directory and returns its entries as FileSystemObjects
 func listObjects(path string) []FileSystemObject {
 	entries, err := os.ReadDir(path)
 	if err != nil {
@@ -34,16 +36,15 @@ func listObjects(path string) []FileSystemObject {
 		}
 
 		entryPath := filepath.Join(path, entry.Name())
-		if absPath, err := filepath.Abs(entryPath); err == nil {
-			entryPath = absPath
-		} else {
-			log.Fatal("Cannot get entryPath abs", err)
+		absPath, err := filepath.Abs(entryPath)
+		if err != nil {
+			log.Fatal("Cannot get abs path", err)
 		}
 
 		objects = append(objects, FileSystemObject{
 			Name:    entry.Name(),
 			IsDir:   entry.IsDir(),
-			Path:    entryPath,
+			Path:    absPath,
 			Size:    info.Size(),
 			ModTime: info.ModTime(),
 		})
@@ -52,34 +53,36 @@ func listObjects(path string) []FileSystemObject {
 	return objects
 }
 
+// ShortName trims long filenames to fit within a tile width
 func (f FileSystemObject) ShortName(maxWidth int) string {
 	if maxWidth == 0 {
 		maxWidth = 10
 	}
 
-	name := f.Name
-	if lipgloss.Width(name) <= maxWidth {
-		return name
+	if lipgloss.Width(f.Name) <= maxWidth {
+		return f.Name
 	}
 
+	// Truncate and add "..."
 	dots := "..."
-	dotsWidth := lipgloss.Width(dots)
-	allowedWidth := maxWidth - dotsWidth
+	allowed := maxWidth - lipgloss.Width(dots)
 
-	currentWidth := 0
-	cutoffIndex := 0
-	for i, r := range name {
-		w := lipgloss.Width(string(r))
-		if currentWidth+w > allowedWidth {
+	width := 0
+	// iterate over the string and add up the width of each character
+	// until the total width exceeds the allowed width
+	i := 0
+	for ; i < len(f.Name); i++ {
+		w := lipgloss.Width(string(f.Name[i]))
+		if width+w > allowed {
 			break
 		}
-		currentWidth += w
-		cutoffIndex = i + 1
+		width += w
 	}
 
-	return name[:cutoffIndex] + dots
+	return f.Name[:i] + dots
 }
 
+// OpenFile opens a file using the OS default app
 func OpenFile(path string) error {
 	var cmd *exec.Cmd
 
@@ -88,7 +91,7 @@ func OpenFile(path string) error {
 		cmd = exec.Command("open", path)
 	case "windows":
 		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", path)
-	default: // Linux and others
+	default:
 		cmd = exec.Command("xdg-open", path)
 	}
 
