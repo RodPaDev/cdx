@@ -19,7 +19,7 @@ type FileSystemObject struct {
 	ModTime time.Time
 }
 
-func ListObjects(path string) []FileSystemObject {
+func listObjects(path string) []FileSystemObject {
 	entries, err := os.ReadDir(path)
 	if err != nil {
 		log.Fatal(err)
