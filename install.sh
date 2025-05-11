@@ -21,17 +21,16 @@ BIN_DIR="$INSTALL_DIR/bin"
 mkdir -p "$BIN_DIR"
 
 # Clone or update repository
-if [ -d "$INSTALL_DIR/src" ]; then
+if [ -d "$INSTALL_DIR/src/.git" ]; then
     echo -e "${BLUE}Updating CDX...${NC}"
     cd "$INSTALL_DIR/src"
     git pull
 else
     echo -e "${BLUE}Downloading CDX...${NC}"
-    mkdir -p "$INSTALL_DIR/src"
+    rm -rf "$INSTALL_DIR/src"
     git clone https://github.com/RodPaDev/cdx.git "$INSTALL_DIR/src"
     cd "$INSTALL_DIR/src"
 fi
-
 # Build the application
 echo -e "${BLUE}Building CDX...${NC}"
 go build -o "$BIN_DIR/cdx"
@@ -43,9 +42,9 @@ chmod +x "$BIN_DIR/cdx"
 PROFILE_FILE=""
 if [ -f "$HOME/.zshrc" ]; then
     PROFILE_FILE="$HOME/.zshrc"
-elif [ -f "$HOME/.bashrc" ]; then
+    elif [ -f "$HOME/.bashrc" ]; then
     PROFILE_FILE="$HOME/.bashrc"
-elif [ -f "$HOME/.bash_profile" ]; then
+    elif [ -f "$HOME/.bash_profile" ]; then
     PROFILE_FILE="$HOME/.bash_profile"
 else
     PROFILE_FILE="$HOME/.profile"
