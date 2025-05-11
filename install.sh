@@ -28,7 +28,7 @@ if [ -d "$INSTALL_DIR/src" ]; then
 else
     echo -e "${BLUE}Downloading CDX...${NC}"
     mkdir -p "$INSTALL_DIR/src"
-    git clone https://github.com/rodpadev/cdx.git "$INSTALL_DIR/src"
+    git clone https://github.com/RodPaDev/cdx.git "$INSTALL_DIR/src"
     cd "$INSTALL_DIR/src"
 fi
 
